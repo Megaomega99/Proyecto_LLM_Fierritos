@@ -1,54 +1,61 @@
-# api/documents.py
+# app/api/documents.py
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
-from db.session import get_db
-from models.document import Document
-from schemas.document import DocumentCreate, DocumentInDB
-from services.document_processor import DocumentProcessor
-from services.llm_service import LLMService
+from app.db.session import get_db
+from app.models.document import Document
+from app.schemas.document import Document as DocumentSchema, DocumentCreate
+from app.services.document_processor import DocumentProcessor
+from app.services.llm_service import LLMService
+from app.api.auth import get_current_user_id
 
 router = APIRouter()
-llm_service = LLMService()
 
-@router.post("/documents/", response_model=DocumentInDB)
-async def create_document(
+@router.post("/upload", response_model=DocumentSchema)
+async def upload_document(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
-    # Process document based on file type
-    content = ""
-    if file.content_type == "application/pdf":
-        content = await DocumentProcessor.process_pdf(file.file)
-    elif file.content_type == "text/plain":
-        content = await DocumentProcessor.process_text(file.file)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported file type")
+    content, file_path = await DocumentProcessor.process_document(file)
     
-    # Generate summary using LLM
-    summary = await llm_service.generate_summary(content)
-    
-    # Create document in database
-    db_document = Document(
+    document = Document(
         title=file.filename,
         content=content,
-        summary=summary,
-        file_path=f"uploads/{file.filename}"
+        file_path=file_path,
+        owner_id=current_user_id
     )
-    db.add(db_document)
+    
+    summary = await LLMService.generate_summary(content)
+    document.summary = summary
+    
+    db.add(document)
     db.commit()
-    db.refresh(db_document)
-    return db_document
+    db.refresh(document)
+    return document
 
-@router.get("/documents/{document_id}/qa")
-async def answer_question(
+@router.get("/documents", response_model=List[DocumentSchema])
+async def get_documents(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    documents = db.query(Document).filter(Document.owner_id == current_user_id).all()
+    return documents
+
+@router.post("/ask/{document_id}")
+async def ask_question(
     document_id: int,
     question: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.owner_id == current_user_id
+    ).first()
+    
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    answer = await llm_service.answer_question(document.content, question)
+    answer = await LLMService.answer_question(document.content, question)
     return {"answer": answer}

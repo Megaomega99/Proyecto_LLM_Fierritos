@@ -1,6 +1,7 @@
+# app/schemas/document.py
 from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+from typing import Optional
 
 class DocumentBase(BaseModel):
     title: str
@@ -9,12 +10,12 @@ class DocumentBase(BaseModel):
 class DocumentCreate(DocumentBase):
     pass
 
-class DocumentInDB(DocumentBase):
+class Document(DocumentBase):
     id: int
     file_path: str
-    summary: Optional[str]
+    summary: Optional[str] = None
     created_at: datetime
     owner_id: int
-    
+
     class Config:
         from_attributes = True

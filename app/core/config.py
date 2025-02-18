@@ -1,5 +1,10 @@
+# app/core/config.py
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
+from dotenv import load_dotenv
+
+load_dotenv('aja.env')
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "RAG SaaS"
@@ -7,20 +12,20 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_DB: str = "ragsaas"
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "aja")
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "ragsaas")
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
     
-    JWT_SECRET_KEY: str = "your-secret-key"
-    JWT_ALGORITHM: str = "HS256"
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "aja")
+    ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # LLM Configuration
-    LLM_MODEL_PATH: str = "local_model_path"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
     
-    class Config:
-        case_sensitive = True
+    OLLAMA_API_URL: str = "http://localhost:11434"
+    MODEL_NAME: str = "llama2"
 
 settings = Settings()
 settings.SQLALCHEMY_DATABASE_URI = (

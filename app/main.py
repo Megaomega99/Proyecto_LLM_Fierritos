@@ -1,9 +1,13 @@
-# main.py
+# app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api import api_router  # Importa el router principal
-from core.config import settings
-import psycopg2
+from app.core.config import settings
+from app.api import auth, documents, users  # Changed import
+from app.db.base import Base
+from app.db.session import engine
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -11,7 +15,6 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Set up CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,25 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluye el router principal
-app.include_router(api_router, prefix=settings.API_V1_STR)
+# Include routers
+app.include_router(auth.router, prefix=settings.API_V1_STR + "/auth", tags=["auth"])
+app.include_router(documents.router, prefix=settings.API_V1_STR + "/documents", tags=["documents"])
+app.include_router(users.router, prefix=settings.API_V1_STR + "/users", tags=["users"])
 
-try:
-    connection = psycopg2.connect(
-        user="tu_usuario",
-        password="tu_contraseña",
-        host="127.0.0.1",
-        port="5432",
-        database="tu_base_de_datos"
-    )
-    cursor = connection.cursor()
-    cursor.execute("SELECT version();")
-    record = cursor.fetchone()
-    print("Conectado a - ", record, "\n")
-except (Exception, psycopg2.Error) as error:
-    print("Error al conectar a PostgreSQL", error)
-finally:
-    if connection:
-        cursor.close()
-        connection.close()
-        print("Conexión a PostgreSQL cerrada")
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
