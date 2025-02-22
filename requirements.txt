@@ -1,0 +1,25 @@
+# Backend Requirements
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-jose[cryptography]
+passlib
+python-multipart
+aiohttp
+python-docx
+Markdown
+PyPDF2
+celery
+redis
+langchain
+langchain-community
+langchain-core
+python-dotenv
+
+# Frontend Requirements
+flet
+requests
+
+# Development Requirements
+autoprefixer
