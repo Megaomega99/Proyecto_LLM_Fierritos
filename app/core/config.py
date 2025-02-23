@@ -4,7 +4,7 @@ from typing import Optional
 import os
 from dotenv import load_dotenv
 
-load_dotenv('aja.env')
+load_dotenv()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "RAG SaaS"
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
-    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "aja")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "Leuname9991gge")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "ragsaas")
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
     

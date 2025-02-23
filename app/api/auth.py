@@ -11,8 +11,7 @@ from app.schemas.user import UserCreate, User as UserSchema
 from jose import JWTError, jwt
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -60,14 +59,42 @@ async def login(
 
 @router.post("/register", response_model=UserSchema)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    db_user = User(
-        email=user.email,
-        hashed_password=security.get_password_hash(user.password)
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    try:
+        # Validar formato de email
+        if not user.email or '@' not in user.email:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid email format"
+            )
+        
+        # Validar contraseña
+        if not user.password or len(user.password) < 8:
+            raise HTTPException(
+                status_code=422,
+                detail="Password must be at least 8 characters long"
+            )
+            
+        # Verificar si el usuario ya existe
+        db_user = db.query(User).filter(User.email == user.email).first()
+        if db_user:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already registered"
+            )
+            
+        # Crear nuevo usuario
+        db_user = User(
+            email=user.email,
+            hashed_password=security.get_password_hash(user.password)
+        )
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating user: {str(e)}"
+        )
