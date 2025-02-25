@@ -26,7 +26,9 @@ async def upload_document(
         owner_id=current_user_id
     )
     
-    summary = await LLMService.generate_summary(content)
+    # Crear instancia de LLMService
+    llm_service = LLMService()
+    summary = await llm_service.generate_summary(content)
     document.summary = summary
     
     db.add(document)
@@ -57,5 +59,7 @@ async def ask_question(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    answer = await LLMService.answer_question(document.content, question)
+    # Crear instancia de LLMService
+    llm_service = LLMService()
+    answer = await llm_service.answer_question(document.content, question)
     return {"answer": answer}

@@ -24,8 +24,30 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     
-    OLLAMA_API_URL: str = "http://localhost:11434"
-    MODEL_NAME: str = "llama2"
+    # Configuración de Ollama
+    OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama2")
+    OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "30"))
+    OLLAMA_MAX_RETRIES: int = int(os.getenv("OLLAMA_MAX_RETRIES", "3"))
+    OLLAMA_RETRY_DELAY: int = int(os.getenv("OLLAMA_RETRY_DELAY", "1"))
+
+    @property
+    def get_ollama_config(self) -> dict:
+        try:
+            return {
+                "base_url": self.OLLAMA_BASE_URL,
+                "model": self.OLLAMA_MODEL,
+                "timeout": self.OLLAMA_TIMEOUT,
+                "max_retries": self.OLLAMA_MAX_RETRIES,
+                "retry_delay": self.OLLAMA_RETRY_DELAY
+            }
+        except Exception as e:
+            print(f"Error en la configuración de Ollama: {str(e)}")
+            raise
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = 'utf-8'
 
 settings = Settings()
 settings.SQLALCHEMY_DATABASE_URI = (

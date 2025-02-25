@@ -2,26 +2,37 @@
 from langchain_community.llms import Ollama
 from typing import List
 import json
+from fastapi import HTTPException
 
 class LLMService:
     def __init__(self):
-        self.llm = Ollama(model="llama2")
+        try:
+            self.llm = Ollama(model="llama2")
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail="No se pudo conectar al servicio LLM. Asegúrate de que Ollama esté corriendo."
+            )
 
     async def generate_summary(self, content: str) -> str:
-        prompt = f"""Please provide a concise summary of the following text:
+        try:
+            prompt = f"Por favor genera un resumen del siguiente texto:\n{content}"
+            return self.llm.invoke(prompt)
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Error al generar el resumen: {str(e)}"
+            )
 
-{content}
-
-Summary:"""
-        return self.llm.invoke(prompt)
-
-    async def answer_question(self, content: str, question: str) -> str:
-        prompt = f"""Based on this content:
-
-{content}
-
-Answer this question: {question}"""
-        return self.llm.invoke(prompt)
+    async def answer_question(self, context: str, question: str) -> str:
+        try:
+            prompt = f"Basándote en el siguiente contexto:\n{context}\n\nResponde esta pregunta:\n{question}"
+            return self.llm.invoke(prompt)
+        except Exception as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Error al responder la pregunta: {str(e)}"
+            )
 
     async def generate_explanations(self, content: str, concepts: List[str]) -> str:
         prompt = f"""For these concepts, provide explanations from the content:
