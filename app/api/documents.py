@@ -27,9 +27,7 @@ async def upload_document(
     )
     
     # Crear instancia de LLMService
-    llm_service = LLMService()
-    summary = await llm_service.generate_summary(content)
-    document.summary = summary
+    
     
     db.add(document)
     db.commit()
