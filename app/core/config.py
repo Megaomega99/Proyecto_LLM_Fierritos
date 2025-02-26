@@ -1,6 +1,6 @@
 # app/core/config.py
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List
 import os
 from dotenv import load_dotenv
 
@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "30"))
     OLLAMA_MAX_RETRIES: int = int(os.getenv("OLLAMA_MAX_RETRIES", "3"))
     OLLAMA_RETRY_DELAY: int = int(os.getenv("OLLAMA_RETRY_DELAY", "1"))
+    
+    # Frontend Configuration
+    FRONTEND_URL: str = "http://localhost:8550"
+    
+    # CORS Configuration
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:8550",
+        "http://localhost:8000"
+    ]
 
     @property
     def get_ollama_config(self) -> dict:

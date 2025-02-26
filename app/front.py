@@ -34,7 +34,7 @@ def main(page: ft.Page):
     async def register(e):
         try:
             # Validar contraseña
-            if password_input.value != confirm_password_input.value:
+            if (password_input.value != confirm_password_input.value):
                 show_snackbar("Las contraseñas no coinciden", "red")
                 return
                 
@@ -78,7 +78,7 @@ def main(page: ft.Page):
         nonlocal token
         try:
             response = requests.post(
-                f"{API_URL}/auth/login",
+                f"{API_URL}/auth/token",
                 data={
                     'username': email_input.value,
                     'password': password_input.value
@@ -100,34 +100,42 @@ def main(page: ft.Page):
                 headers={'Authorization': f'Bearer {token}'}
             )
             response.raise_for_status()
-            docs = response.json()
+            documents = response.json()
+            
+            # Actualizar dropdown con los documentos
             documents_dropdown.options = [
-                ft.dropdown.Option(key=str(doc['id']), text=doc['title'])
-                for doc in docs
+                ft.dropdown.Option(
+                    key=str(doc['id']),
+                    text=doc['title']
+                ) for doc in documents
             ]
             page.update()
         except Exception as e:
             show_snackbar(f"Failed to load documents: {str(e)}", "red")
 
-    async def upload_file(e):
-        if not e.files:
+    async def upload_file(e: ft.FilePickerResultEvent):
+        if not e.files or not e.files[0]:
+            show_snackbar("No file selected", "red")
             return
+
+        file = e.files[0]
         try:
-            files = {'file': (
-                e.files[0].name,
-                open(e.files[0].path, 'rb'),
-                'application/octet-stream'
-            )}
+            # Crear form-data con el archivo
+            files = {'file': (file.name, open(file.path, 'rb'), 'application/octet-stream')}
+            
             response = requests.post(
                 f"{API_URL}/documents/upload",
                 headers={'Authorization': f'Bearer {token}'},
                 files=files
             )
             response.raise_for_status()
-            show_snackbar(f"File uploaded successfully!")
+            
+            # Actualizar lista de documentos
             await load_documents()
+            show_snackbar("File uploaded successfully!")
+            
         except Exception as e:
-            show_snackbar(f"Upload failed: {str(e)}", "red")
+            show_snackbar(f"Failed to upload file: {str(e)}", "red")
         page.update()
 
     async def ask_question(e):
