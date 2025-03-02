@@ -30,40 +30,20 @@ def main(page: ft.Page):
         dialog.open = False
         page.update()
 
-    # Función para mostrar el resumen
-    def show_summary_dialog(e, doc_id):
-        # Encontrar el documento por ID
-        doc = next((d for d in documents_list if d['id'] == doc_id), None)
-        if not doc:
-            show_snackbar(f"No se encontró el documento con ID: {doc_id}", "red")
-            return
-            
-        # Crear un nuevo diálogo cada vez (esto evita problemas de estado)
-        summary_text = doc.get('summary', 'No hay resumen disponible') or "No hay resumen disponible"
-        
-        # Mostrar el diálogo
-        summary_dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Text(f"Resumen de '{doc['title']}'"),
-            content=ft.Container(
-                content=ft.Text(summary_text),
-                width=400,
-                height=200,
-                padding=10,
-                bgcolor=ft.colors.BLUE_50,
-                border_radius=5,
-            ),
-            actions=[
-                ft.TextButton("Cerrar", 
-                    on_click=lambda e, dlg=None: close_dialog(e, page.dialog))
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        
-        # Asignar el diálogo a la página y mostrarlo
-        page.dialog = summary_dialog
-        summary_dialog.open = True
-        page.update()
+    # Function to toggle summary visibility
+    def toggle_summary(e, doc_id):
+        # Find the document control in the list
+        for control in documents_list_view.controls:
+            if hasattr(control, 'data') and control.data == doc_id:
+                # Toggle the visibility of the summary container
+                summary_container = control.content.content.controls[1]
+                summary_container.visible = not summary_container.visible
+                
+                # Update button text based on visibility
+                toggle_button = control.content.content.controls[0].controls[2]
+                toggle_button.text = "Hide Summary" if summary_container.visible else "Show Summary"
+                page.update()
+                break
 
     # Navigation drawer and App Bar
     def build_app_bar(title):
@@ -252,53 +232,66 @@ def main(page: ft.Page):
             for doc in documents_list:
                 doc_id = doc['id']
                 doc_title = doc['title']
+                summary_text = doc.get('summary', 'No summary available') or "No summary available"
                 
-                # Create buttons with proper event binding
-                summary_button = ft.ElevatedButton(
-                    "Ver Resumen",
-                    icon=ft.icons.SUMMARIZE,
-                    style=ft.ButtonStyle(
-                        color=ft.colors.WHITE,
-                        bgcolor=accent_color,
+                # Create a card for each document
+                doc_card = ft.Card(
+                    data=doc_id,  # Store document ID for reference
+                    content=ft.Container(
+                        content=ft.Column([
+                            # Top row with document info and buttons
+                            ft.Row(
+                                [
+                                    ft.Icon(ft.icons.DESCRIPTION, color=primary_color),
+                                    ft.Column(
+                                        [
+                                            ft.Text(doc_title, weight=ft.FontWeight.BOLD),
+                                            ft.Text(f"Created: {doc['created_at'][:10]}", size=12, color=ft.colors.GREY_700),
+                                        ],
+                                        spacing=5,
+                                        expand=True
+                                    ),
+                                    ft.ElevatedButton(
+                                        "Show Summary",
+                                        icon=ft.icons.SUMMARIZE,
+                                        style=ft.ButtonStyle(
+                                            color=ft.colors.WHITE,
+                                            bgcolor=accent_color,
+                                        ),
+                                        on_click=lambda e, doc_id=doc_id: toggle_summary(e, doc_id)
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.icons.DELETE,
+                                        icon_color=danger_color,
+                                        tooltip="Delete document",
+                                        data=doc_id,
+                                        on_click=confirm_delete_document
+                                    )
+                                ],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                            ),
+                            # Summary container (initially hidden)
+                            ft.Container(
+                                content=ft.Column([
+                                    ft.Divider(),
+                                    ft.Text("Summary:", weight=ft.FontWeight.BOLD),
+                                    ft.Container(
+                                        content=ft.Text(summary_text),
+                                        bgcolor=ft.colors.BLUE_50,
+                                        border_radius=5,
+                                        padding=10,
+                                        expand=True
+                                    )
+                                ]),
+                                visible=False  # Initially hidden
+                            )
+                        ]),
+                        padding=15
                     ),
-                    on_click=lambda e, doc_id=doc_id: show_summary_dialog(e, doc_id)
+                    elevation=2
                 )
                 
-                documents_list_view.controls.append(
-                    ft.Card(
-                        content=ft.Container(
-                            content=ft.Column([
-                                ft.Row(
-                                    [
-                                        ft.Icon(ft.icons.DESCRIPTION, color=primary_color),
-                                        ft.Column(
-                                            [
-                                                ft.Text(doc_title, weight=ft.FontWeight.BOLD),
-                                                ft.Text(f"Created: {doc['created_at'][:10]}", size=12, color=ft.colors.GREY_700),
-                                            ],
-                                            spacing=5,
-                                        )
-                                    ],
-                                ),
-                                ft.Row(
-                                    [
-                                        summary_button,
-                                        ft.IconButton(
-                                            icon=ft.icons.DELETE,
-                                            icon_color=danger_color,
-                                            tooltip="Delete document",
-                                            data=doc_id,
-                                            on_click=confirm_delete_document
-                                        )
-                                    ],
-                                    alignment=ft.MainAxisAlignment.END
-                                )
-                            ]),
-                            padding=15
-                        ),
-                        elevation=2
-                    )
-                )
+                documents_list_view.controls.append(doc_card)
             page.update()
         except Exception as e:
             show_snackbar(f"Failed to load documents: {str(e)}", "red")
