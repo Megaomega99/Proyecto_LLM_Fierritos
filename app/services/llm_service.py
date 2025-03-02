@@ -16,7 +16,7 @@ class LLMService:
 
     async def generate_summary(self, content: str) -> str:
         try:
-            prompt = f"Por favor genera un resumen del siguiente texto:\n{content}"
+            prompt = f"Genera un resumen del siguiente texto:\n{content}"
             return self.llm.invoke(prompt)
         except Exception as e:
             raise HTTPException(

@@ -78,7 +78,7 @@ def main(page: ft.Page):
         nonlocal token
         try:
             response = requests.post(
-                f"{API_URL}/auth/login",
+                f"{API_URL}/auth/token",
                 data={
                     'username': email_input.value,
                     'password': password_input.value
@@ -132,24 +132,37 @@ def main(page: ft.Page):
 
     async def ask_question(e):
         if not documents_dropdown.value or not question_input.value:
-            show_snackbar("Please select a document and enter a question", "red")
+            show_snackbar("Por favor selecciona un documento e ingresa una pregunta", "red")
             return
         try:
+            # Mostrar estado de carga
+            answer_text.value = "Procesando pregunta..."
+            page.update()
+            
+            # Construir la URL con los parámetros de consulta
+            document_id = documents_dropdown.value
+            question = question_input.value
+            
             response = requests.post(
-                f"{API_URL}/documents/ask/{documents_dropdown.value}",
-                headers={
-                    'Authorization': f'Bearer {token}',
-                    'Content-Type': 'application/json'
-                },
-                json={'question': question_input.value}
+                f"{API_URL}/documents/ask/{document_id}",
+                params={'question': question},
+                headers={'Authorization': f'Bearer {token}'}
             )
-            response.raise_for_status()
-            answer = response.json()['answer']
-            answer_text.value = answer
-            show_snackbar("Question answered successfully!")
+            
+            if response.status_code == 404:
+                show_snackbar("Documento no encontrado", "red")
+                answer_text.value = ""
+            else:
+                response.raise_for_status()
+                answer = response.json().get('answer', 'No se pudo obtener una respuesta')
+                answer_text.value = answer
+                show_snackbar("¡Pregunta respondida exitosamente!")
+                
         except Exception as e:
-            show_snackbar(f"Failed to get answer: {str(e)}", "red")
-        page.update()
+            show_snackbar(f"Error al obtener respuesta: {str(e)}", "red")
+            answer_text.value = ""
+        finally:
+            page.update()
 
     file_picker.on_result = upload_file
 
