@@ -11,6 +11,7 @@ class Document(Base):
     title = Column(String, index=True)
     content = Column(Text)
     file_path = Column(String)
+    summary = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     owner_id = Column(Integer, ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents")

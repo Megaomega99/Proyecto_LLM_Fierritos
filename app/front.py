@@ -4,47 +4,183 @@ import json
 
 def main(page: ft.Page):
     page.title = "Fierritos RAG"
-    page.window_width = 800
+    page.window_width = 1000
     page.window_height = 800
-
+    page.theme_mode = ft.ThemeMode.LIGHT
+    page.padding = 20
+    
+    # Color scheme
+    primary_color = ft.colors.BLUE_700
+    accent_color = ft.colors.ORANGE_500
+    danger_color = ft.colors.RED_600
+    
     API_URL = "http://localhost:8000/api/v1"
     token = None
+    documents_list = []
 
     def show_snackbar(message, color="green"):
         page.snack_bar = ft.SnackBar(
-            content=ft.Text(message),
+            content=ft.Text(message, color=ft.colors.WHITE),
             bgcolor=color
         )
         page.snack_bar.open = True
         page.update()
 
-    # Campos de entrada para login y registro
-    email_input = ft.TextField(label="Email", width=300)
-    password_input = ft.TextField(label="Password", password=True, width=300)
-    confirm_password_input = ft.TextField(label="Confirm Password", password=True, width=300)
-    name_input = ft.TextField(label="Full Name", width=300)
+    def close_dialog(e, dialog):
+        dialog.open = False
+        page.update()
 
-    # Componentes para documentos
+    # Función para mostrar el resumen
+    def show_summary_dialog(e, doc_id):
+        # Encontrar el documento por ID
+        doc = next((d for d in documents_list if d['id'] == doc_id), None)
+        if not doc:
+            show_snackbar(f"No se encontró el documento con ID: {doc_id}", "red")
+            return
+            
+        # Crear un nuevo diálogo cada vez (esto evita problemas de estado)
+        summary_text = doc.get('summary', 'No hay resumen disponible') or "No hay resumen disponible"
+        
+        # Mostrar el diálogo
+        summary_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(f"Resumen de '{doc['title']}'"),
+            content=ft.Container(
+                content=ft.Text(summary_text),
+                width=400,
+                height=200,
+                padding=10,
+                bgcolor=ft.colors.BLUE_50,
+                border_radius=5,
+            ),
+            actions=[
+                ft.TextButton("Cerrar", 
+                    on_click=lambda e, dlg=None: close_dialog(e, page.dialog))
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        # Asignar el diálogo a la página y mostrarlo
+        page.dialog = summary_dialog
+        summary_dialog.open = True
+        page.update()
+
+    # Navigation drawer and App Bar
+    def build_app_bar(title):
+        return ft.AppBar(
+            leading=ft.Icon(ft.icons.AUTO_AWESOME),
+            leading_width=40,
+            title=ft.Text(title, weight=ft.FontWeight.BOLD),
+            center_title=False,
+            bgcolor=primary_color,
+            actions=[
+                ft.IconButton(
+                    icon=ft.icons.LOGOUT,
+                    icon_color=ft.colors.WHITE,
+                    tooltip="Logout",
+                    on_click=logout,
+                ),
+            ] if token else [],
+        )
+
+    # Logout function
+    async def logout(e):
+        nonlocal token
+        token = None
+        show_snackbar("Logged out successfully")
+        page.go("/login")
+        page.update()
+
+    # Input fields
+    email_input = ft.TextField(
+        label="Email",
+        border=ft.InputBorder.OUTLINE,
+        width=350,
+        prefix_icon=ft.icons.EMAIL
+    )
+    
+    password_input = ft.TextField(
+        label="Password",
+        password=True,
+        can_reveal_password=True,
+        border=ft.InputBorder.OUTLINE,
+        width=350,
+        prefix_icon=ft.icons.LOCK
+    )
+    
+    confirm_password_input = ft.TextField(
+        label="Confirm Password",
+        password=True,
+        can_reveal_password=True,
+        border=ft.InputBorder.OUTLINE,
+        width=350,
+        prefix_icon=ft.icons.LOCK_RESET
+    )
+    
+    name_input = ft.TextField(
+        label="Full Name",
+        border=ft.InputBorder.OUTLINE,
+        width=350,
+        prefix_icon=ft.icons.PERSON
+    )
+
+    # Documents components
     file_picker = ft.FilePicker()
     page.overlay.append(file_picker)
-    documents_dropdown = ft.Dropdown(width=300, label="Select Document")
-    question_input = ft.TextField(label="Question", width=300, multiline=True)
-    answer_text = ft.Text(size=16, width=300)
+    
+    documents_dropdown = ft.Dropdown(
+        width=350,
+        label="Select Document",
+        border=ft.InputBorder.OUTLINE,
+        prefix_icon=ft.icons.DESCRIPTION
+    )
+    
+    question_input = ft.TextField(
+        label="Question",
+        width=350,
+        multiline=True,
+        min_lines=2,
+        max_lines=4,
+        border=ft.InputBorder.OUTLINE,
+        prefix_icon=ft.icons.QUESTION_ANSWER
+    )
+    
+    documents_list_view = ft.ListView(
+        spacing=10,
+        padding=20,
+        auto_scroll=True
+    )
+    
+    answer_container = ft.Container(
+        content=ft.Column([
+            ft.Text("Answer", weight=ft.FontWeight.BOLD, size=18),
+            ft.Container(
+                content=ft.Text("", size=16),
+                bgcolor=ft.colors.BLUE_50,
+                border_radius=10,
+                padding=15,
+                width=700,
+                height=250,
+                border=ft.border.all(1, ft.colors.BLUE_200),
+            )
+        ]),
+        visible=False
+    )
 
     async def register(e):
         try:
             # Validar contraseña
-            if password_input.value != confirm_password_input.value:
-                show_snackbar("Las contraseñas no coinciden", "red")
+            if (password_input.value != confirm_password_input.value):
+                show_snackbar("Passwords don't match", "red")
                 return
                 
             if len(password_input.value) < 8:
-                show_snackbar("La contraseña debe tener al menos 8 caracteres", "red")
+                show_snackbar("Password must be at least 8 characters", "red")
                 return
 
             # Validar email
             if not email_input.value or '@' not in email_input.value:
-                show_snackbar("Formato de email inválido", "red")
+                show_snackbar("Invalid email format", "red")
                 return
 
             response = requests.post(
@@ -56,14 +192,14 @@ def main(page: ft.Page):
             )
             
             if response.status_code == 400:
-                show_snackbar("El email ya está registrado", "red")
+                show_snackbar("Email already registered", "red")
                 return
             elif response.status_code == 422:
-                show_snackbar("Datos inválidos. Verifica el email y la contraseña", "red")
+                show_snackbar("Invalid data. Check email and password", "red")
                 return
                 
             response.raise_for_status()
-            show_snackbar("¡Registro exitoso! Por favor inicia sesión.")
+            show_snackbar("Registration successful! Please login.")
             # Limpiar campos
             email_input.value = ""
             password_input.value = ""
@@ -71,7 +207,7 @@ def main(page: ft.Page):
             page.go("/login")
             
         except Exception as e:
-            show_snackbar(f"Error en el registro: {str(e)}", "red")
+            show_snackbar(f"Registration error: {str(e)}", "red")
         page.update()
 
     async def login(e):
@@ -94,52 +230,165 @@ def main(page: ft.Page):
         page.update()
 
     async def load_documents():
+        nonlocal documents_list
         try:
             response = requests.get(
                 f"{API_URL}/documents/documents",
                 headers={'Authorization': f'Bearer {token}'}
             )
             response.raise_for_status()
-            docs = response.json()
+            documents_list = response.json()
+            
+            # Update dropdown
             documents_dropdown.options = [
-                ft.dropdown.Option(key=str(doc['id']), text=doc['title'])
-                for doc in docs
+                ft.dropdown.Option(
+                    key=str(doc['id']),
+                    text=doc['title']
+                ) for doc in documents_list
             ]
+            
+            # Update documents list view
+            documents_list_view.controls.clear()
+            for doc in documents_list:
+                doc_id = doc['id']
+                doc_title = doc['title']
+                
+                # Create buttons with proper event binding
+                summary_button = ft.ElevatedButton(
+                    "Ver Resumen",
+                    icon=ft.icons.SUMMARIZE,
+                    style=ft.ButtonStyle(
+                        color=ft.colors.WHITE,
+                        bgcolor=accent_color,
+                    ),
+                    on_click=lambda e, doc_id=doc_id: show_summary_dialog(e, doc_id)
+                )
+                
+                documents_list_view.controls.append(
+                    ft.Card(
+                        content=ft.Container(
+                            content=ft.Column([
+                                ft.Row(
+                                    [
+                                        ft.Icon(ft.icons.DESCRIPTION, color=primary_color),
+                                        ft.Column(
+                                            [
+                                                ft.Text(doc_title, weight=ft.FontWeight.BOLD),
+                                                ft.Text(f"Created: {doc['created_at'][:10]}", size=12, color=ft.colors.GREY_700),
+                                            ],
+                                            spacing=5,
+                                        )
+                                    ],
+                                ),
+                                ft.Row(
+                                    [
+                                        summary_button,
+                                        ft.IconButton(
+                                            icon=ft.icons.DELETE,
+                                            icon_color=danger_color,
+                                            tooltip="Delete document",
+                                            data=doc_id,
+                                            on_click=confirm_delete_document
+                                        )
+                                    ],
+                                    alignment=ft.MainAxisAlignment.END
+                                )
+                            ]),
+                            padding=15
+                        ),
+                        elevation=2
+                    )
+                )
             page.update()
         except Exception as e:
             show_snackbar(f"Failed to load documents: {str(e)}", "red")
 
-    async def upload_file(e):
-        if not e.files:
-            return
+    def confirm_delete_document(e):
+        # Create a dialog for confirmation
+        document_id = e.control.data
+        document_title = next((doc['title'] for doc in documents_list if doc['id'] == document_id), "this document")
+        
+        dialog = ft.AlertDialog(
+            title=ft.Text("Confirm Deletion"),
+            content=ft.Text(f"Are you sure you want to delete '{document_title}'? This cannot be undone."),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda e: close_dialog(e, dialog)),
+                ft.TextButton(
+                    "Delete", 
+                    on_click=lambda e: delete_document(e, document_id, dialog),
+                    style=ft.ButtonStyle(color=danger_color)
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        page.dialog = dialog
+        dialog.open = True
+        page.update()
+    
+    async def delete_document(e, document_id, dialog):
         try:
-            files = {'file': (
-                e.files[0].name,
-                open(e.files[0].path, 'rb'),
-                'application/octet-stream'
-            )}
+            response = requests.delete(
+                f"{API_URL}/documents/documents/{document_id}",
+                headers={'Authorization': f'Bearer {token}'}
+            )
+            response.raise_for_status()
+            
+            # Close dialog
+            dialog.open = False
+            
+            # Reload documents
+            await load_documents()
+            show_snackbar("Document deleted successfully")
+        except Exception as e:
+            show_snackbar(f"Failed to delete document: {str(e)}", "red")
+        page.update()
+
+    async def upload_file(e: ft.FilePickerResultEvent):
+        if not e.files or not e.files[0]:
+            show_snackbar("No file selected", "red")
+            return
+
+        file = e.files[0]
+        try:
+            # Create form-data with the file
+            files = {'file': (file.name, open(file.path, 'rb'), 'application/octet-stream')}
+            
+            # Show progress
+            progress_ring.visible = True
+            page.update()
+            
             response = requests.post(
                 f"{API_URL}/documents/upload",
                 headers={'Authorization': f'Bearer {token}'},
                 files=files
             )
             response.raise_for_status()
-            show_snackbar(f"File uploaded successfully!")
+            
+            # Hide progress
+            progress_ring.visible = False
+            
+            # Update documents list
             await load_documents()
+            show_snackbar("File uploaded successfully!")
+            
         except Exception as e:
-            show_snackbar(f"Upload failed: {str(e)}", "red")
+            progress_ring.visible = False
+            show_snackbar(f"Failed to upload file: {str(e)}", "red")
         page.update()
 
     async def ask_question(e):
         if not documents_dropdown.value or not question_input.value:
-            show_snackbar("Por favor selecciona un documento e ingresa una pregunta", "red")
+            show_snackbar("Please select a document and enter a question", "red")
             return
         try:
-            # Mostrar estado de carga
-            answer_text.value = "Procesando pregunta..."
+            # Show loading state
+            progress_ring.visible = True
+            answer_container.visible = True
+            answer_container.content.controls[1].content.value = "Processing question..."
             page.update()
             
-            # Construir la URL con los parámetros de consulta
+            # Build URL with query parameters
             document_id = documents_dropdown.value
             question = question_input.value
             
@@ -149,84 +398,241 @@ def main(page: ft.Page):
                 headers={'Authorization': f'Bearer {token}'}
             )
             
+            # Hide progress
+            progress_ring.visible = False
+            
             if response.status_code == 404:
-                show_snackbar("Documento no encontrado", "red")
-                answer_text.value = ""
+                show_snackbar("Document not found", "red")
+                answer_container.content.controls[1].content.value = ""
             else:
                 response.raise_for_status()
-                answer = response.json().get('answer', 'No se pudo obtener una respuesta')
-                answer_text.value = answer
-                show_snackbar("¡Pregunta respondida exitosamente!")
+                answer = response.json().get('answer', 'Could not get an answer')
+                answer_container.content.controls[1].content.value = answer
+                show_snackbar("Question answered successfully!")
                 
         except Exception as e:
-            show_snackbar(f"Error al obtener respuesta: {str(e)}", "red")
-            answer_text.value = ""
+            progress_ring.visible = False
+            show_snackbar(f"Error getting response: {str(e)}", "red")
+            answer_container.content.controls[1].content.value = ""
         finally:
             page.update()
 
     file_picker.on_result = upload_file
-
-    # Vista de registro
-    register_view = ft.Column(
-        controls=[
-            ft.Text("Register", size=32, weight=ft.FontWeight.BOLD),
-            name_input,
-            email_input,
-            password_input,
-            confirm_password_input,
-            ft.ElevatedButton("Register", on_click=register),
-            ft.TextButton("Already have an account? Login", on_click=lambda _: page.go("/login"))
-        ],
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=20
+    
+    # Progress indicator
+    progress_ring = ft.ProgressRing(
+        width=20,
+        height=20,
+        stroke_width=2,
+        visible=False
     )
 
-    # Vista de login modificada
-    login_view = ft.Column(
-        controls=[
-            ft.Text("Login", size=32, weight=ft.FontWeight.BOLD),
-            email_input,
-            password_input,
-            ft.ElevatedButton("Login", on_click=login),
-            ft.TextButton("Don't have an account? Register", on_click=lambda _: page.go("/register"))
-        ],
-        alignment=ft.MainAxisAlignment.CENTER,
-        spacing=20
-    )
-
-    documents_view = ft.Column(
-        controls=[
-            ft.Text("Document Management", size=32, weight=ft.FontWeight.BOLD),
-            ft.ElevatedButton(
-                "Upload Document",
-                icon=ft.icons.UPLOAD_FILE,
-                on_click=lambda _: file_picker.pick_files()
+    # Views
+    register_view = ft.View(
+        "/register",
+        [
+            build_app_bar("Register New Account"),
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Container(
+                            content=ft.Image(src="https://placehold.co/200x200?text=Fierritos", width=150, height=150),
+                            alignment=ft.alignment.center,
+                        ),
+                        ft.Text("Create a new account", size=24, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+                        name_input,
+                        email_input,
+                        password_input,
+                        confirm_password_input,
+                        ft.Container(height=20),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton(
+                                    "Register",
+                                    on_click=register,
+                                    style=ft.ButtonStyle(
+                                        color=ft.colors.WHITE,
+                                        bgcolor=primary_color,
+                                        padding=15,
+                                    ),
+                                    width=350
+                                )
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER
+                        ),
+                        ft.Container(
+                            content=ft.Row(
+                                [
+                                    ft.Text("Already have an account?"),
+                                    ft.TextButton("Login", on_click=lambda _: page.go("/login"))
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER
+                            )
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=15
+                ),
+                padding=20,
+                alignment=ft.alignment.center,
             ),
-            ft.Divider(),
-            ft.Text("Ask Questions", size=20),
-            documents_dropdown,
-            question_input,
-            ft.ElevatedButton("Ask", on_click=ask_question),
-            answer_text
         ],
-        alignment=ft.MainAxisAlignment.START,
-        spacing=20
+        padding=0
+    )
+
+    login_view = ft.View(
+        "/login",
+        [
+            build_app_bar("Login"),
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Container(
+                            content=ft.Image(src="https://placehold.co/200x200?text=Fierritos", width=150, height=150),
+                            alignment=ft.alignment.center,
+                        ),
+                        ft.Text("Welcome Back", size=28, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+                        ft.Text("Login to your account", size=16, color=ft.colors.GREY_700),
+                        ft.Container(height=20),
+                        email_input,
+                        password_input,
+                        ft.Container(height=20),
+                        ft.Row(
+                            [
+                                ft.ElevatedButton(
+                                    "Login",
+                                    on_click=login,
+                                    style=ft.ButtonStyle(
+                                        color=ft.colors.WHITE,
+                                        bgcolor=primary_color,
+                                        padding=15,
+                                    ),
+                                    width=350
+                                )
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER
+                        ),
+                        ft.Container(
+                            content=ft.Row(
+                                [
+                                    ft.Text("Don't have an account?"),
+                                    ft.TextButton("Register", on_click=lambda _: page.go("/register"))
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER
+                            )
+                        )
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=15
+                ),
+                padding=20,
+                alignment=ft.alignment.center,
+            ),
+        ],
+        padding=0
+    )
+
+    documents_view = ft.View(
+        "/documents",
+        [
+            build_app_bar("Document Management"),
+            ft.Tabs(
+                selected_index=0,
+                animation_duration=300,
+                tabs=[
+                    ft.Tab(
+                        text="Documents",
+                        icon=ft.icons.FOLDER,
+                        content=ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Row(
+                                        [
+                                            ft.Text("My Documents", size=20, weight=ft.FontWeight.BOLD),
+                                            ft.Row(
+                                                [
+                                                    ft.ElevatedButton(
+                                                        "Upload New Document",
+                                                        icon=ft.icons.UPLOAD_FILE,
+                                                        on_click=lambda _: file_picker.pick_files(),
+                                                        style=ft.ButtonStyle(
+                                                            color=ft.colors.WHITE,
+                                                            bgcolor=primary_color,
+                                                        ),
+                                                    ),
+                                                    progress_ring,
+                                                ],
+                                            ),
+                                        ],
+                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                    ),
+                                    ft.Divider(),
+                                    documents_list_view,
+                                ],
+                            ),
+                            padding=20,
+                        ),
+                    ),
+                    ft.Tab(
+                        text="Ask Questions",
+                        icon=ft.icons.QUESTION_ANSWER,
+                        content=ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Text("Ask a Question", size=20, weight=ft.FontWeight.BOLD),
+                                    ft.Card(
+                                        content=ft.Container(
+                                            content=ft.Column(
+                                                [
+                                                    documents_dropdown,
+                                                    question_input,
+                                                    ft.Container(
+                                                        content=ft.ElevatedButton(
+                                                            "Ask Question",
+                                                            icon=ft.icons.SEND,
+                                                            on_click=ask_question,
+                                                            style=ft.ButtonStyle(
+                                                                color=ft.colors.WHITE,
+                                                                bgcolor=primary_color,
+                                                            ),
+                                                        ),
+                                                        alignment=ft.alignment.center_right,
+                                                        margin=ft.margin.only(top=10)
+                                                    ),
+                                                ],
+                                                spacing=15,
+                                            ),
+                                            padding=20,
+                                        ),
+                                        elevation=3,
+                                        margin=10,
+                                    ),
+                                    answer_container,
+                                ],
+                                spacing=20,
+                            ),
+                            padding=20,
+                        ),
+                    ),
+                ],
+                expand=1,
+            ),
+        ],
+        padding=0
     )
 
     def route_change(e):
-        page.views.clear()
         if page.route == "/documents":
-            page.views.append(
-                ft.View("/documents", [documents_view])
-            )
+            page.views.clear()
+            page.views.append(documents_view)
         elif page.route == "/register":
-            page.views.append(
-                ft.View("/register", [register_view])
-            )
+            page.views.clear()
+            page.views.append(register_view)
         else:  # "/login" o ruta por defecto
-            page.views.append(
-                ft.View("/login", [login_view])
-            )
+            page.views.clear()
+            page.views.append(login_view)
         page.update()
 
     page.on_route_change = route_change
