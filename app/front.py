@@ -1,6 +1,7 @@
 import flet as ft
 import requests
 import json
+import os
 
 def main(page: ft.Page):
     page.title = "Fierritos RAG"
@@ -48,10 +49,28 @@ def main(page: ft.Page):
                 page.update()
                 break
 
+    # Create logo images for different positions
+    def create_logo_image():
+        return ft.Image(
+            src="app\jiji\logo.png",
+            width=100,
+            height=100,
+            fit=ft.ImageFit.CONTAIN,
+        )
+        
+    def create_second_logo_image():
+        return ft.Image(
+            src="app\jiji\logop.png",
+            width=100,
+            height=100,
+            fit=ft.ImageFit.CONTAIN,
+        )
+    
     # Logo component to be shown in app bar
     def create_logo():
-        return ft.Container(
-            content=ft.Column([
+        return ft.Row([
+            create_logo_image(),
+            ft.Column([
                 ft.Text("FIERRITOS SAS", 
                       color=primary_color, 
                       weight=ft.FontWeight.BOLD,
@@ -60,22 +79,35 @@ def main(page: ft.Page):
                       color=primary_color, 
                       size=10)
             ], spacing=0, alignment=ft.MainAxisAlignment.CENTER),
-            border=ft.border.all(color=primary_color, width=2),
-            border_radius=30,
-            padding=ft.padding.all(10),
-            width=120,
-            height=50,
-        )
+        ], spacing=10, alignment=ft.MainAxisAlignment.START)
+    
+    # Create bottom right logo
+    # Fixed position logos in corners
+    bottom_right_logo = ft.Container(
+        content=create_logo_image(),
+        alignment=ft.alignment.bottom_right,
+        width=100,
+        height=100,
+        padding=ft.padding.only(right=20, bottom=20)
+    )
+    
+    bottom_left_logo = ft.Container(
+        content=create_second_logo_image(),
+        alignment=ft.alignment.bottom_left,
+        width=100,
+        height=100,
+        padding=ft.padding.only(left=20, bottom=20)
+    )
     
     # Navigation drawer and App Bar
     def build_app_bar(title):
         return ft.AppBar(
             leading=create_logo(),
-            leading_width=140,
+            leading_width=200,  # Increased to accommodate the logo image
             title=ft.Text(title, weight=ft.FontWeight.BOLD, color=text_color),
             center_title=False,
             bgcolor=secondary_color,
-            toolbar_height=70,
+            toolbar_height=100,  # Increased to accommodate the logo image
             actions=[
                 ft.IconButton(
                     icon=ft.icons.LOGOUT,
@@ -451,58 +483,73 @@ def main(page: ft.Page):
         visible=False
     )
 
+    # Create view container with logos
+    def create_view_with_logo(content):
+        return ft.Column([
+            content,
+            ft.Row([
+                bottom_left_logo,
+                ft.Container(expand=True),
+                bottom_right_logo
+            ])
+        ], spacing=0)
+
     # Views
     register_view = ft.View(
         "/register",
         [
             build_app_bar("Register New Account"),
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Container(
-                            content=create_logo(),
-                            alignment=ft.alignment.center,
-                            padding=20,
-                            width=200,
-                            height=200,
-                        ),
-                        ft.Text("Create a new account", size=24, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
-                        name_input,
-                        email_input,
-                        password_input,
-                        confirm_password_input,
-                        ft.Container(height=20),
-                        ft.Row(
-                            [
-                                ft.ElevatedButton(
-                                    "Register",
-                                    on_click=register,
-                                    style=ft.ButtonStyle(
-                                        color=text_color,
-                                        bgcolor=primary_color,
-                                        padding=15,
-                                    ),
-                                    width=350
-                                )
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER
-                        ),
-                        ft.Container(
-                            content=ft.Row(
+            create_view_with_logo(
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Container(
+                                content=create_logo_image(),
+                                alignment=ft.alignment.center,
+                                padding=20,
+                                width=200,
+                                height=200,
+                            ),
+                            ft.Text("Create a new account", size=24, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+                            name_input,
+                            email_input,
+                            password_input,
+                            confirm_password_input,
+                            ft.Container(height=20),
+                            ft.Row(
                                 [
-                                    ft.Text("Already have an account?"),
-                                    ft.TextButton("Login", on_click=lambda _: page.go("/login"))
+                                    ft.ElevatedButton(
+                                        "Register",
+                                        on_click=register,
+                                        style=ft.ButtonStyle(
+                                            color=text_color,
+                                            bgcolor=primary_color,
+                                            padding=15,
+                                        ),
+                                        width=350
+                                    )
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER
-                            )
-                        )
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=15
-                ),
-                padding=20,
-                alignment=ft.alignment.center,
+                            ),
+                            ft.Container(
+                                content=ft.Row(
+                                    [
+                                        ft.Text("Already have an account?"),
+                                        ft.TextButton("Login", on_click=lambda _: page.go("/login"))
+                                    ],
+                                    alignment=ft.MainAxisAlignment.CENTER
+                                )
+                            ),
+                            # Add space at the bottom to prevent overlap with the bottom right logo
+                            ft.Container(height=100)
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=15
+                    ),
+                    padding=20,
+                    alignment=ft.alignment.center,
+                )
             ),
         ],
         padding=0
@@ -512,53 +559,57 @@ def main(page: ft.Page):
         "/login",
         [
             build_app_bar("Login"),
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Container(
-                            content=create_logo(),
-                            alignment=ft.alignment.center,
-                            padding=20,
-                            width=200,
-                            height=200,
-                        ),
-                        ft.Text("Welcome Back", size=28, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
-                        ft.Text("Login to your account", size=16, color=ft.colors.GREY_700),
-                        ft.Container(height=20),
-                        email_input,
-                        password_input,
-                        ft.Container(height=20),
-                        ft.Row(
-                            [
-                                ft.ElevatedButton(
-                                    "Login",
-                                    on_click=login,
-                                    style=ft.ButtonStyle(
-                                        color=text_color,
-                                        bgcolor=primary_color,
-                                        padding=15,
-                                    ),
-                                    width=350
-                                )
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER
-                        ),
-                        ft.Container(
-                            content=ft.Row(
+            create_view_with_logo(
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Container(
+                                content=create_logo_image(),
+                                alignment=ft.alignment.center,
+                                padding=20,
+                                width=200,
+                                height=200,
+                            ),
+                            ft.Text("Welcome Back", size=28, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+                            ft.Text("Login to your account", size=16, color=ft.colors.GREY_700),
+                            ft.Container(height=20),
+                            email_input,
+                            password_input,
+                            ft.Container(height=20),
+                            ft.Row(
                                 [
-                                    ft.Text("Don't have an account?"),
-                                    ft.TextButton("Register", on_click=lambda _: page.go("/register"))
+                                    ft.ElevatedButton(
+                                        "Login",
+                                        on_click=login,
+                                        style=ft.ButtonStyle(
+                                            color=text_color,
+                                            bgcolor=primary_color,
+                                            padding=15,
+                                        ),
+                                        width=350
+                                    )
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER
-                            )
-                        )
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=15
-                ),
-                padding=20,
-                alignment=ft.alignment.center,
+                            ),
+                            ft.Container(
+                                content=ft.Row(
+                                    [
+                                        ft.Text("Don't have an account?"),
+                                        ft.TextButton("Register", on_click=lambda _: page.go("/register"))
+                                    ],
+                                    alignment=ft.MainAxisAlignment.CENTER
+                                )
+                            ),
+                            # Add space at the bottom to prevent overlap with the bottom right logo
+                            ft.Container(height=100)
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=15
+                    ),
+                    padding=20,
+                    alignment=ft.alignment.center,
+                )
             ),
         ],
         padding=0
@@ -568,86 +619,90 @@ def main(page: ft.Page):
         "/documents",
         [
             build_app_bar("Document Management"),
-            ft.Tabs(
-                selected_index=0,
-                animation_duration=300,
-                tabs=[
-                    ft.Tab(
-                        text="Documents",
-                        icon=ft.icons.FOLDER,
-                        content=ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Row(
-                                        [
-                                            ft.Text("My Documents", size=20, weight=ft.FontWeight.BOLD),
-                                            ft.Row(
-                                                [
-                                                    ft.ElevatedButton(
-                                                        "Upload New Document",
-                                                        icon=ft.icons.UPLOAD_FILE,
-                                                        on_click=lambda _: file_picker.pick_files(),
-                                                        style=ft.ButtonStyle(
-                                                            color=text_color,
-                                                            bgcolor=primary_color,
-                                                        ),
-                                                    ),
-                                                    progress_ring,
-                                                ],
-                                            ),
-                                        ],
-                                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                    ),
-                                    ft.Divider(),
-                                    documents_list_view,
-                                ],
-                            ),
-                            padding=20,
-                        ),
-                    ),
-                    ft.Tab(
-                        text="Ask Questions",
-                        icon=ft.icons.QUESTION_ANSWER,
-                        content=ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text("Ask a Question", size=20, weight=ft.FontWeight.BOLD),
-                                    ft.Card(
-                                        content=ft.Container(
-                                            content=ft.Column(
-                                                [
-                                                    documents_dropdown,
-                                                    question_input,
-                                                    ft.Container(
-                                                        content=ft.ElevatedButton(
-                                                            "Ask Question",
-                                                            icon=ft.icons.SEND,
-                                                            on_click=ask_question,
+            create_view_with_logo(
+                ft.Tabs(
+                    selected_index=0,
+                    animation_duration=300,
+                    tabs=[
+                        ft.Tab(
+                            text="Documents",
+                            icon=ft.icons.FOLDER,
+                            content=ft.Container(
+                                content=ft.Column(
+                                    [
+                                        ft.Row(
+                                            [
+                                                ft.Text("My Documents", size=20, weight=ft.FontWeight.BOLD),
+                                                ft.Row(
+                                                    [
+                                                        ft.ElevatedButton(
+                                                            "Upload New Document",
+                                                            icon=ft.icons.UPLOAD_FILE,
+                                                            on_click=lambda _: file_picker.pick_files(),
                                                             style=ft.ButtonStyle(
-                                                                color=ft.colors.WHITE,
+                                                                color=text_color,
                                                                 bgcolor=primary_color,
                                                             ),
                                                         ),
-                                                        alignment=ft.alignment.center_right,
-                                                        margin=ft.margin.only(top=10)
-                                                    ),
-                                                ],
-                                                spacing=15,
-                                            ),
-                                            padding=20,
+                                                        progress_ring,
+                                                    ],
+                                                ),
+                                            ],
+                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                                         ),
-                                        elevation=3,
-                                        margin=10,
-                                    ),
-                                    answer_container,
-                                ],
-                                spacing=20,
+                                        ft.Divider(),
+                                        documents_list_view,
+                                    ],
+                                ),
+                                padding=20,
                             ),
-                            padding=20,
                         ),
-                    ),
-                ],
-                expand=1,
+                        ft.Tab(
+                            text="Ask Questions",
+                            icon=ft.icons.QUESTION_ANSWER,
+                            content=ft.Container(
+                                content=ft.Column(
+                                    [
+                                        ft.Text("Ask a Question", size=20, weight=ft.FontWeight.BOLD),
+                                        ft.Card(
+                                            content=ft.Container(
+                                                content=ft.Column(
+                                                    [
+                                                        documents_dropdown,
+                                                        question_input,
+                                                        ft.Container(
+                                                            content=ft.ElevatedButton(
+                                                                "Ask Question",
+                                                                icon=ft.icons.SEND,
+                                                                on_click=ask_question,
+                                                                style=ft.ButtonStyle(
+                                                                    color=ft.colors.WHITE,
+                                                                    bgcolor=primary_color,
+                                                                ),
+                                                            ),
+                                                            alignment=ft.alignment.center_right,
+                                                            margin=ft.margin.only(top=10)
+                                                        ),
+                                                    ],
+                                                    spacing=15,
+                                                ),
+                                                padding=20,
+                                            ),
+                                            elevation=3,
+                                            margin=10,
+                                        ),
+                                        answer_container,
+                                        # Add space at the bottom to prevent overlap with the bottom right logo
+                                        ft.Container(height=100)
+                                    ],
+                                    spacing=20,
+                                ),
+                                padding=20,
+                            ),
+                        ),
+                    ],
+                    expand=1,
+                )
             ),
         ],
         padding=0
@@ -667,5 +722,8 @@ def main(page: ft.Page):
 
     page.on_route_change = route_change
     page.go("/login")  # Cambiar la ruta inicial a login
+
+# Make sure the logo.png file exists in the same directory as this script
+# If it doesn't exist, you may need to create or download a logo image
 
 ft.app(target=main, port=8001)
