@@ -6,13 +6,16 @@ def main(page: ft.Page):
     page.title = "Fierritos RAG"
     page.window_width = 1000
     page.window_height = 800
-    page.theme_mode = ft.ThemeMode.LIGHT
+    page.theme_mode = ft.ThemeMode.DARK
+    page.bgcolor = "#121212"
     page.padding = 20
     
-    # Color scheme
-    primary_color = ft.colors.BLUE_700
-    accent_color = ft.colors.ORANGE_500
-    danger_color = ft.colors.RED_600
+    # Color scheme based on logo
+    primary_color = "#D38B5D"  # Copper/bronze color
+    secondary_color = "#121212"  # Dark background
+    accent_color = "#F0A06A"  # Lighter copper
+    danger_color = "#B44C1B"  # Darker copper for danger
+    text_color = "#FFFFFF"  # White text
     
     API_URL = "http://localhost:8000/api/v1"
     token = None
@@ -45,18 +48,38 @@ def main(page: ft.Page):
                 page.update()
                 break
 
+    # Logo component to be shown in app bar
+    def create_logo():
+        return ft.Container(
+            content=ft.Column([
+                ft.Text("FIERRITOS SAS", 
+                      color=primary_color, 
+                      weight=ft.FontWeight.BOLD,
+                      size=14),
+                ft.Text("IA TECHNOLOGY", 
+                      color=primary_color, 
+                      size=10)
+            ], spacing=0, alignment=ft.MainAxisAlignment.CENTER),
+            border=ft.border.all(color=primary_color, width=2),
+            border_radius=30,
+            padding=ft.padding.all(10),
+            width=120,
+            height=50,
+        )
+    
     # Navigation drawer and App Bar
     def build_app_bar(title):
         return ft.AppBar(
-            leading=ft.Icon(ft.icons.AUTO_AWESOME),
-            leading_width=40,
-            title=ft.Text(title, weight=ft.FontWeight.BOLD),
+            leading=create_logo(),
+            leading_width=140,
+            title=ft.Text(title, weight=ft.FontWeight.BOLD, color=text_color),
             center_title=False,
-            bgcolor=primary_color,
+            bgcolor=secondary_color,
+            toolbar_height=70,
             actions=[
                 ft.IconButton(
                     icon=ft.icons.LOGOUT,
-                    icon_color=ft.colors.WHITE,
+                    icon_color=primary_color,
                     tooltip="Logout",
                     on_click=logout,
                 ),
@@ -128,15 +151,16 @@ def main(page: ft.Page):
     documents_list_view = ft.ListView(
         spacing=10,
         padding=20,
-        auto_scroll=True
+        auto_scroll=True,
+        expand=True
     )
     
     answer_container = ft.Container(
         content=ft.Column([
-            ft.Text("Answer", weight=ft.FontWeight.BOLD, size=18),
+            ft.Text("Answer", weight=ft.FontWeight.BOLD, size=22, color=secondary_color),
             ft.Container(
                 content=ft.Text("", size=16),
-                bgcolor=ft.colors.BLUE_50,
+                bgcolor=accent_color,
                 border_radius=10,
                 padding=15,
                 width=700,
@@ -242,7 +266,7 @@ def main(page: ft.Page):
                             # Top row with document info and buttons
                             ft.Row(
                                 [
-                                    ft.Icon(ft.icons.DESCRIPTION, color=primary_color),
+                                    ft.Icon(ft.icons.DESCRIPTION, color=primary_color, size=30),
                                     ft.Column(
                                         [
                                             ft.Text(doc_title, weight=ft.FontWeight.BOLD),
@@ -276,8 +300,8 @@ def main(page: ft.Page):
                                     ft.Divider(),
                                     ft.Text("Summary:", weight=ft.FontWeight.BOLD),
                                     ft.Container(
-                                        content=ft.Text(summary_text),
-                                        bgcolor=ft.colors.BLUE_50,
+                                        content=ft.Text(summary_text, color=secondary_color),
+                                        bgcolor=accent_color,
                                         border_radius=5,
                                         padding=10,
                                         expand=True
@@ -392,7 +416,7 @@ def main(page: ft.Page):
             )
             
             # Hide progress
-            progress_ring.visible = False
+            progress_ring.visible = True
             
             if response.status_code == 404:
                 show_snackbar("Document not found", "red")
@@ -429,8 +453,11 @@ def main(page: ft.Page):
                 content=ft.Column(
                     [
                         ft.Container(
-                            content=ft.Image(src="https://placehold.co/200x200?text=Fierritos", width=150, height=150),
+                            content=create_logo(),
                             alignment=ft.alignment.center,
+                            padding=20,
+                            width=200,
+                            height=200,
                         ),
                         ft.Text("Create a new account", size=24, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
                         name_input,
@@ -444,7 +471,7 @@ def main(page: ft.Page):
                                     "Register",
                                     on_click=register,
                                     style=ft.ButtonStyle(
-                                        color=ft.colors.WHITE,
+                                        color=text_color,
                                         bgcolor=primary_color,
                                         padding=15,
                                     ),
@@ -482,8 +509,11 @@ def main(page: ft.Page):
                 content=ft.Column(
                     [
                         ft.Container(
-                            content=ft.Image(src="https://placehold.co/200x200?text=Fierritos", width=150, height=150),
+                            content=create_logo(),
                             alignment=ft.alignment.center,
+                            padding=20,
+                            width=200,
+                            height=200,
                         ),
                         ft.Text("Welcome Back", size=28, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
                         ft.Text("Login to your account", size=16, color=ft.colors.GREY_700),
@@ -497,7 +527,7 @@ def main(page: ft.Page):
                                     "Login",
                                     on_click=login,
                                     style=ft.ButtonStyle(
-                                        color=ft.colors.WHITE,
+                                        color=text_color,
                                         bgcolor=primary_color,
                                         padding=15,
                                     ),
@@ -551,7 +581,7 @@ def main(page: ft.Page):
                                                         icon=ft.icons.UPLOAD_FILE,
                                                         on_click=lambda _: file_picker.pick_files(),
                                                         style=ft.ButtonStyle(
-                                                            color=ft.colors.WHITE,
+                                                            color=text_color,
                                                             bgcolor=primary_color,
                                                         ),
                                                     ),
