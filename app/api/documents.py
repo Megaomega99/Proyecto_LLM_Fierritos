@@ -17,22 +17,27 @@ async def upload_document(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    content, file_path = await DocumentProcessor.process_document(file)
-    
-    document = Document(
-        title=file.filename,
-        content=content,
-        file_path=file_path,
-        owner_id=current_user_id
-    )
-    
-    # Crear instancia de LLMService
-    
-    
-    db.add(document)
-    db.commit()
-    db.refresh(document)
-    return document
+    try:
+        # Procesar documento y generar resumen
+        content, file_path, summary = await DocumentProcessor.process_document(file)
+        
+        document = Document(
+            title=file.filename,
+            content=content,
+            file_path=file_path,
+            summary=summary,
+            owner_id=current_user_id
+        )
+        
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+        return document
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al procesar el documento: {str(e)}"
+        )
 
 @router.get("/documents", response_model=List[DocumentSchema])
 async def get_documents(
