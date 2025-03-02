@@ -394,11 +394,15 @@ def main(page: ft.Page):
             show_snackbar(f"Failed to upload file: {str(e)}", "red")
         page.update()
 
+    
     async def ask_question(e):
         if not documents_dropdown.value or not question_input.value:
             show_snackbar("Please select a document and enter a question", "red")
             return
         try:
+            # Clear previous answer
+            answer_container.content.controls[1].content.value = ""
+            
             # Show loading state
             progress_ring.visible = True
             answer_container.visible = True
@@ -416,7 +420,7 @@ def main(page: ft.Page):
             )
             
             # Hide progress
-            progress_ring.visible = True
+            progress_ring.visible = False
             
             if response.status_code == 404:
                 show_snackbar("Document not found", "red")
@@ -433,6 +437,9 @@ def main(page: ft.Page):
             answer_container.content.controls[1].content.value = ""
         finally:
             page.update()
+
+
+
 
     file_picker.on_result = upload_file
     
