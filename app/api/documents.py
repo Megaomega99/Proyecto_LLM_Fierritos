@@ -1,6 +1,7 @@
 # app/api/documents.py
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+import os
 from typing import List
 from app.db.session import get_db
 from app.models.document import Document
@@ -17,23 +18,27 @@ async def upload_document(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    content, file_path = await DocumentProcessor.process_document(file)
-    
-    document = Document(
-        title=file.filename,
-        content=content,
-        file_path=file_path,
-        owner_id=current_user_id
-    )
-    
-    # Generate summary using LLM
-    summary = await LLMService.generate_summary(content)
-    document.summary = summary
-    
-    db.add(document)
-    db.commit()
-    db.refresh(document)
-    return document
+    try:
+        # Procesar documento y generar resumen
+        content, file_path, summary = await DocumentProcessor.process_document(file)
+        
+        document = Document(
+            title=file.filename,
+            content=content,
+            file_path=file_path,
+            summary=summary,
+            owner_id=current_user_id
+        )
+        
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+        return document
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al procesar el documento: {str(e)}"
+        )
 
 @router.get("/documents", response_model=List[DocumentSchema])
 async def get_documents(
@@ -42,6 +47,37 @@ async def get_documents(
 ):
     documents = db.query(Document).filter(Document.owner_id == current_user_id).all()
     return documents
+
+@router.delete("/documents/{document_id}")
+async def delete_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.owner_id == current_user_id
+    ).first()
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    try:
+        # Delete the physical file if it exists
+        if document.file_path and os.path.exists(document.file_path):
+            os.remove(document.file_path)
+        
+        # Delete from database
+        db.delete(document)
+        db.commit()
+        
+        return {"message": "Document deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting document: {str(e)}"
+        )
 
 @router.post("/ask/{document_id}")
 async def ask_question(
@@ -58,5 +94,7 @@ async def ask_question(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    answer = await LLMService.answer_question(document.content, question)
+    # Crear instancia de LLMService
+    llm_service = LLMService()
+    answer = await llm_service.answer_question(document.content, question)
     return {"answer": answer}

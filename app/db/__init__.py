@@ -1,10 +1,5 @@
-# db/__init__.py
-from .session import SessionLocal, engine, get_db
-from .base import Base
-
-# Make sure all models are imported
-from models.user import User
-from models.document import Document
-
-# Initialize models
-Base.metadata.create_all(bind=engine)
+# app/db/__init__.py
+from app.models.user import User
+from app.models.document import Document
+from app.db.base import Base
+from app.db.session import SessionLocal, get_db

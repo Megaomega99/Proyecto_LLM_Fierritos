@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias mínimas
+RUN pip install flet==0.10.0
+
+# Copiar solo el archivo frontend
+COPY ./app/front.py /app/front.py
+
+# Crear un archivo de entrada simplificado
+RUN echo '#!/usr/bin/env python3\nimport flet as ft\n\ndef main(page):\n    page.title = "Fierritos RAG"\n    page.add(ft.Text("Frontend en mantenimiento. Usa la API en http://localhost:8050/docs"))\n\nft.app(target=main, port=8001)\n' > /app/simple_front.py
+
+# Ejecutar el frontend simplificado
+CMD ["python", "/app/simple_front.py"]
