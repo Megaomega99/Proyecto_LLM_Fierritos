@@ -52,7 +52,7 @@ def main(page: ft.Page):
     # Create logo images for different positions
     def create_logo_image():
         return ft.Image(
-            src="app\jiji\logo.png",
+            src="app\logo.png",
             width=100,
             height=100,
             fit=ft.ImageFit.CONTAIN,
@@ -60,7 +60,7 @@ def main(page: ft.Page):
         
     def create_second_logo_image():
         return ft.Image(
-            src="app\jiji\logop.png",
+            src="app\logop.png",
             width=100,
             height=100,
             fit=ft.ImageFit.CONTAIN,
