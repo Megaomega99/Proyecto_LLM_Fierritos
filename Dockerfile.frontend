@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy entire project
+COPY . .
+
+# Install Python dependencies and ensure latest Flet
+RUN pip install --no-cache-dir -r app/requirements.txt
+RUN pip install --upgrade flet
+
+# Expose port for Flet frontend
+EXPOSE 8001
+
+# Create a simple script to run Flet in web mode
+RUN echo 'import os\nimport sys\nsys.path.append(".")\nfrom app.front import main\nimport flet as ft\nft.app(target=main, port=8001, view="web")' > run_frontend.py
+
+# Run the modified script
+CMD ["python", "run_frontend.py"]

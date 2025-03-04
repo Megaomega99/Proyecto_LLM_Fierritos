@@ -18,7 +18,7 @@ def main(page: ft.Page):
     danger_color = "#B44C1B"  # Darker copper for danger
     text_color = "#FFFFFF"  # White text
     
-    API_URL = "http://localhost:8000/api/v1"
+    API_URL = "http://localhost:8050/api/v1"
     token = None
     documents_list = []
 
